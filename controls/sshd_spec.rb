@@ -20,15 +20,16 @@
 
 title 'SSH server config'
 
-sshd_valid_ciphers = attribute('sshd_valid_ciphers', default: ssh_crypto.valid_ciphers, description: 'Expected value for sshd_config ciphers')
-sshd_valid_kexs = attribute('sshd_valid_kexs', default: ssh_crypto.valid_kexs, description: 'Expected value for sshd_config kexs')
-sshd_valid_macs = attribute('sshd_valid_macs', default: ssh_crypto.valid_macs, description: 'Expected value for sshd_config macs')
-sshd_permittunnel = attribute('sshd_permittunnel', default: 'no', description: 'Expected value for sshd_config PermitTunnel')
-sshd_tcpforwarding = attribute('sshd_tcpforwarding', default: 'no', description: 'Expected value for sshd_config TcpForwarding')
-sshd_agentforwarding = attribute('sshd_agentforwarding', default: 'no', description: 'Expected value for sshd_config AgentForwarding')
-sshd_gatewayports = attribute('sshd_gatewayports', default: 'no', description: 'Expected value for sshd_config GatewayPorts')
-sshd_x11forwarding = attribute('sshd_x11forwarding', default: 'no', description: 'Expected value for sshd_config X11Forwarding')
-sshd_banner = attribute('sshd_banner', default: 'none', description: 'Expected value for sshd_config Banner')
+sshd_valid_ciphers = attribute('sshd_valid_ciphers', value: ssh_crypto.valid_ciphers, description: 'Expected value for sshd_config ciphers')
+sshd_valid_kexs = attribute('sshd_valid_kexs', value: ssh_crypto.valid_kexs, description: 'Expected value for sshd_config kexs')
+sshd_valid_macs = attribute('sshd_valid_macs', value: ssh_crypto.valid_macs, description: 'Expected value for sshd_config macs')
+sshd_permittunnel = attribute('sshd_permittunnel', value: 'no', description: 'Expected value for sshd_config PermitTunnel')
+sshd_tcpforwarding = attribute('sshd_tcpforwarding', value: 'no', description: 'Expected value for sshd_config TcpForwarding')
+sshd_agentforwarding = attribute('sshd_agentforwarding', value: 'no', description: 'Expected value for sshd_config AgentForwarding')
+sshd_gatewayports = attribute('sshd_gatewayports', value: 'no', description: 'Expected value for sshd_config GatewayPorts')
+sshd_x11forwarding = attribute('sshd_x11forwarding', value: 'no', description: 'Expected value for sshd_config X11Forwarding')
+sshd_banner = attribute('sshd_banner', value: 'none', description: 'Expected value for sshd_config Banner')
+sshd_max_auth_tries = attribute('sshd_max_auth_tries', value: 2, description: 'Expected value for max_auth_retries')
 
 only_if do
   command('sshd').exist?
@@ -105,7 +106,7 @@ control 'sshd-06' do
   title 'Server: Do not permit root-based login or do not allow password and keyboard-interactive authentication'
   desc 'Reduce the potential risk to gain full privileges access of the system because of weak password and keyboard-interactive authentication, do not allow logging in as the root user or with password authentication.'
   describe sshd_config do
-    its('PermitRootLogin') { should match(/no|without-password/) }
+    its('PermitRootLogin') { should match(/no|without-password|prohibit-password/) }
   end
 end
 
@@ -186,7 +187,7 @@ control 'sshd-15' do
   title 'Server: Specify UseLogin to NO'
   desc 'Disable legacy login mechanism and do not use login for interactive login sessions.'
   describe sshd_config do
-    its('UseLogin') { should eq('no') }
+    its('UseLogin') { should eq(ssh_crypto.ssh_version < 7.4 ? 'no' : nil) }
   end
 end
 
@@ -220,9 +221,11 @@ end
 control 'sshd-19' do
   impact 1.0
   title 'Server: Specify Limit for maximum authentication retries'
-  desc 'MaxAuthTries limits the user to three wrong attempts before the login attempt is denied. This avoid resource starvation attacks.'
+  desc 'The MaxAuthTries parameter specifies the maximum number of authentication attempts permitted per connection. When the login failure count reaches half the number, error messages will be written to the syslog file detailing the login failure. Setting the MaxAuthTries parameter to a low number will minimize the risk of successful brute force attacks to the SSH server. The default is 2 but should be configured based on site policy.'
+  tag 'CIS Red Hat Enterprise Linux 7 Benchmark version 01-31-2017': '2.1.1'
+  ref 'Center for Internet Security', url: 'https://www.cisecurity.org/'
   describe sshd_config do
-    its('MaxAuthTries') { should eq('2') }
+    its('MaxAuthTries') { should cmp(sshd_max_auth_tries) }
   end
 end
 

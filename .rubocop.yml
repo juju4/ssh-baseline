@@ -4,7 +4,6 @@ AllCops:
   - vendor/**/*
   - "*/puppet/Puppetfile"
   - "*/puppet/.tmp/**/*"
-  TargetRubyVersion: 2.5
 Documentation:
   Enabled: false
 AlignParameters:
